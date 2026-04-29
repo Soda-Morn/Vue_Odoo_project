@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const api = axios.create({
+export const api = axios.create({
     baseURL: import.meta.env.VITE_ODOO_URL,
     withCredentials: true, // allow browser to send login cookie on every request
     headers: {

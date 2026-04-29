@@ -28,6 +28,7 @@ By the end of this project, I can explain how Vue 3 works, why the Composition A
 - Error display on wrong credentials
 - Session persists in `localStorage` so you stay logged in after page refresh
 - Automatic redirect: if not logged in → go to `/login`; if already logged in → skip login page
+- **Session expiry handling**: if the Odoo server session expires, any API call automatically clears local state and redirects to `/login`
 
 ### Fuel Request List
 - Table showing all fuel requests from Odoo
@@ -687,6 +688,57 @@ async function logout() {
 
 The Odoo cookie is invalidated on the server, and the local user state is cleared. The router guard then prevents access to any protected page.
 
+### Step 7 — Automatic Redirect on Session Expiry
+
+Odoo sessions expire on the server after a period of inactivity. When this happens, Odoo still returns HTTP 200 but includes an error in the JSON body:
+
+```json
+{
+  "error": {
+    "code": 100,
+    "message": "Odoo Session Expired",
+    "data": { "name": "odoo.http.SessionExpiredException" }
+  }
+}
+```
+
+Because axios treats any 200 response as a success, the app would silently fail to load data and leave the user on a broken page. To fix this, an axios **response interceptor** is registered in `main.js` right after the router and Pinia are set up:
+
+```js
+// src/main.js
+api.interceptors.response.use(
+    (response) => {
+        const error = response.data?.error
+        const isSessionExpired =
+            error?.data?.name === 'odoo.http.SessionExpiredException' ||
+            error?.message === 'Odoo Session Expired' ||
+            error?.code === 100
+        if (isSessionExpired) {
+            localStorage.removeItem(USER_KEY)
+            router.push({ name: 'login' })
+        }
+        return response
+    },
+    (networkError) => {
+        if (networkError.response?.status === 401) {
+            localStorage.removeItem(USER_KEY)
+            router.push({ name: 'login' })
+        }
+        return Promise.reject(networkError)
+    }
+)
+```
+
+The interceptor is placed in `main.js` (not in `odoo.js`) to avoid a circular import: `odoo.js` imports nothing from the app, but `auth.js` imports from `odoo.js`, and `router/index.js` imports from `auth.js` — so importing router inside `odoo.js` would create a cycle. Registering the interceptor in `main.js` after both are initialized breaks that cycle cleanly.
+
+The two cases handled:
+| Trigger | What Happened |
+|---------|--------------|
+| `error.data.name === 'odoo.http.SessionExpiredException'` | Server-side Odoo session expired |
+| HTTP `401` | Network-level unauthorized (fallback) |
+
+In both cases: `auth_user` is removed from `localStorage`, and the router redirects to `/login`. The existing navigation guard then prevents re-entry to any protected page.
+
 ---
 
 ## Odoo API Integration — How It Works
@@ -941,3 +993,5 @@ npm run build
 - How to build **composables** that extract logic and make it reusable
 - How to connect to a real backend API and handle loading/error/empty states cleanly
 - How **Tailwind CSS** speeds up UI development with utility classes
+- How **axios interceptors** catch server-side session expiry in JSON-RPC APIs (where errors come back as HTTP 200) and redirect the user automatically
+- Why circular imports matter and how to avoid them by registering interceptors in `main.js` instead of inside the API module
