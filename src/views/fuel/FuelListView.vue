@@ -1,28 +1,22 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useFuelStore } from '@/stores/fuel'
+import { useFuelStore }       from '@/stores/fuel'
+import { useFormatters }      from '@/composables/useFormatters'
+import { useDeleteConfirm }   from '@/composables/useDeleteConfirm'
+import AppSpinner from '@/components/AppSpinner.vue'
+import AppError   from '@/components/AppError.vue'
+import AppEmpty   from '@/components/AppEmpty.vue'
 
 const router = useRouter()
 const store  = useFuelStore()
 
-const deleteId = ref(null)
-const deleting = ref(false)
+const { fmt, m2o, num }                    = useFormatters()
+const { deleteId, deleting, confirmDelete } = useDeleteConfirm(store.deleteRecord)
 
-// Vue lifecycle: runs once when component mounts
 onMounted(() => store.fetchList())
 
-async function confirmDelete() {
-  deleting.value = true
-  try   { await store.deleteRecord(deleteId.value); deleteId.value = null }
-  catch { /* error stays in store */ }
-  finally { deleting.value = false }
-}
-
-// Helpers to format cell values
-const fmt = (d) => d ? new Date(d).toLocaleDateString('en-GB') : '-'
-const m2o = (f) => Array.isArray(f) ? f[1] : (f || '-')   // many2one → display name
-const num = (n) => n != null ? Number(n).toFixed(2) : '-'
+const EMPTY_ICON = 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'
 </script>
 
 <template>
@@ -38,26 +32,9 @@ const num = (n) => n != null ? Number(n).toFixed(2) : '-'
       </button>
     </div>
 
-    <!-- Loading spinner -->
-    <div v-if="store.loading" class="flex justify-center py-24">
-      <div class="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-    </div>
-
-    <!-- Error state -->
-    <div v-else-if="store.error"
-         class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-5 py-4">
-      {{ store.error }}
-    </div>
-
-    <!-- Empty state -->
-    <div v-else-if="!store.records.length"
-         class="flex flex-col items-center py-24 text-gray-400">
-      <svg class="w-12 h-12 mb-3 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-      </svg>
-      <p class="text-sm">No fuel requests found.</p>
-    </div>
+    <AppSpinner v-if="store.loading" />
+    <AppError   v-else-if="store.error"   :message="store.error" />
+    <AppEmpty   v-else-if="!store.records.length" message="No fuel requests found." :icon="EMPTY_ICON" />
 
     <!-- Data table -->
     <div v-else class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
@@ -77,7 +54,6 @@ const num = (n) => n != null ? Number(n).toFixed(2) : '-'
         </thead>
 
         <tbody class="divide-y divide-gray-100">
-          <!-- v-for: render one row per record -->
           <tr v-for="row in store.records" :key="row.id"
               class="hover:bg-gray-50 transition-colors">
             <td class="px-5 py-3.5 font-medium text-blue-600">{{ row.name }}</td>
@@ -105,7 +81,6 @@ const num = (n) => n != null ? Number(n).toFixed(2) : '-'
           </tr>
         </tbody>
 
-        <!-- Footer totals row -->
         <tfoot>
           <tr class="border-t-2 border-gray-200 bg-gray-50 font-semibold text-gray-700 text-sm">
             <td colspan="6" class="px-5 py-3 text-right text-xs text-gray-400 uppercase tracking-wide">Total</td>

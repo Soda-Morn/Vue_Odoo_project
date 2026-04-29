@@ -22,6 +22,9 @@ const router = createRouter({
         { path: 'fuel',          name: 'fuel',        component: () => import('@/views/fuel/FuelListView.vue') },
         { path: 'fuel/new',      name: 'fuel-create', component: () => import('@/views/fuel/FuelFormView.vue') },
         { path: 'fuel/:id/edit', name: 'fuel-edit',   component: () => import('@/views/fuel/FuelFormView.vue') },
+
+        // Reporting
+        { path: 'reporting', name: 'reporting', component: () => import('@/views/reporting/ReportingView.vue') },
       ],
     },
   ],

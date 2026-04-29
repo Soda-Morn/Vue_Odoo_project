@@ -3,6 +3,8 @@ import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useFuelStore } from '@/stores/fuel'
 import { fuelAPI } from '@/api/fleet'
+import AppSpinner from '@/components/AppSpinner.vue'
+import AppError   from '@/components/AppError.vue'
 
 const route  = useRoute()
 const router = useRouter()
@@ -225,23 +227,12 @@ async function handleSave() {
     <div class="max-w-4xl mx-auto px-6 py-7">
 
       <!-- Loading -->
-      <div v-if="loading" class="flex flex-col items-center justify-center py-32 gap-3">
-        <div class="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-        <p class="text-sm text-gray-400">Loading form data…</p>
-      </div>
+      <AppSpinner v-if="loading" text="Loading form data…" />
 
       <template v-else>
 
         <!-- Error banner -->
-        <div v-if="error"
-             class="mb-5 flex items-start gap-3 px-5 py-4 bg-red-50 border border-red-200
-                    text-red-700 text-sm rounded-xl">
-          <svg class="w-5 h-5 shrink-0 mt-0.5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-          {{ error }}
-        </div>
+        <AppError v-if="error" :message="error" class="mb-5" />
 
         <!-- ── Main form card ─────────────────────────────── -->
         <div class="bg-white rounded-2xl border border-gray-200 shadow-sm mb-5 overflow-hidden">

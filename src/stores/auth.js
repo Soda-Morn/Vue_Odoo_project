@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { authAPI } from "@/api/odoo";
+import router from "@/router";
 
 const USER_KEY = 'auth_user'
 
@@ -23,6 +24,7 @@ export const useAuthStore = defineStore('auth', () => {
         await authAPI.logout()
         user.value = null
         localStorage.removeItem(USER_KEY)
+        router.push({ name: 'login' })
     }
 
     //must return everything the component needs
